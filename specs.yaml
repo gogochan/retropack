@@ -1,0 +1,6 @@
+vault:
+  url: https://releases.hashicorp.com/vault/1.18.1/vault_1.18.1_windows_amd64.zip
+  target_path: /tmp/vault
+vault_sig:
+  url: https://releases.hashicorp.com/vault/1.18.1/vault_1.18.1_SHA256SUMS.sig
+  target_path: /tmp/vault
