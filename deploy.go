@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
@@ -39,8 +41,12 @@ var cmdDeploy = &cli.Command{
 		}
 		for name, artifact := range specs {
 			fmt.Println("Processing artifact: ", name)
-			err := artifact.DownloadAndSaveURL()
-			if err != nil {
+			if err := artifact.DownloadAndSaveURL(); err != nil {
+				return err
+			}
+
+			fmt.Printf("Add %s to Path\n", artifact.TargetPath)
+			if err := artifact.AddToPATH(); err != nil {
 				return err
 			}
 		}
@@ -92,6 +98,34 @@ func (a Artifact) DownloadAndSaveURL() error {
 	}
 
 	return nil
+}
+
+func (a Artifact) AddToPATH() error {
+	// Add the target path to the PATH environment variable
+	if runtime.GOOS == "windows" {
+		args := []string{
+			"powershell",
+			"-Command",
+			renderPowershellSetPathCommand(a.TargetPath, "Machine"),
+		}
+		if err := exec.Command("powershell", args...).Run(); err != nil {
+			return fmt.Errorf("error adding to PATH: %w", err)
+		}
+	} else {
+		// TODO: handle other operating systems
+	}
+	return nil
+}
+
+func renderPowershellSetPathCommand(path, scope string) string {
+	return fmt.Sprintf(`
+	# Persistently add the target path to the PATH environment variable
+	$curPath = [Environment]::GetEnvironmentVariable('Path', '%s')
+	[Environment]::SetEnvironmentVariable('Path', $curPath + ';%s', '%s')
+
+	# Add the target path to the PATH environment variable for the current session
+	$env:Path += $env:Path + ';%s'
+	`, scope, path, scope, path)
 }
 
 func unzip(src string, dest string) error {
