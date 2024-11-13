@@ -78,3 +78,47 @@ func TestDownloadAndSaveURL(t *testing.T) {
 		})
 	}
 }
+func TestRenderPowershellSetPathCommand(t *testing.T) {
+	tests := []struct {
+		name   string
+		path   string
+		scope  string
+		expect string
+	}{
+		{
+			name:  "Machine scope",
+			path:  `C:\example\path`,
+			scope: "Machine",
+			expect: `
+	# Persistently add the target path to the PATH environment variable
+	$curPath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+	[Environment]::SetEnvironmentVariable('Path', $curPath + ';C:\example\path', 'Machine')
+
+	# Add the target path to the PATH environment variable for the current session
+	$env:Path += $env:Path + ';C:\example\path'
+	`,
+		},
+		{
+			name:  "User scope",
+			path:  `D:\another\path`,
+			scope: "User",
+			expect: `
+	# Persistently add the target path to the PATH environment variable
+	$curPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+	[Environment]::SetEnvironmentVariable('Path', $curPath + ';D:\another\path', 'User')
+
+	# Add the target path to the PATH environment variable for the current session
+	$env:Path += $env:Path + ';D:\another\path'
+	`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := renderPowershellSetPathCommand(tt.path, tt.scope)
+			if got != tt.expect {
+				t.Errorf("renderPowershellSetPathCommand() = %v, want %v", got, tt.expect)
+			}
+		})
+	}
+}
